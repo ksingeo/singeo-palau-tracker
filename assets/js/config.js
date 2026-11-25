@@ -38,3 +38,8 @@ export const EMBEDS = {
   marinetraffic: { lat: 7.4, lon: 134.0, zoom: 6 },
   adsb: "https://globe.adsb.lol/?lat=7.4&lon=134.5&zoom=6",
 };
+
+// Vessels to flag on the map and in the watch list. Match by 9-digit MMSI, IMO
+// number, or part of the ship's name. Viewers can add their own in the
+// dashboard; for a list shared across devices, edit assets/watchlist.json.
+export const WATCHLIST_DEFAULTS = [];

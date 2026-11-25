@@ -71,7 +71,7 @@ def write_json(name: str, obj) -> None:
     path = os.path.join(DATA_DIR, name)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(obj, f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     os.replace(tmp, path)
 
 

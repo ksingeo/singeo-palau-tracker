@@ -107,7 +107,7 @@ select.inline { padding: 2px 6px; font-size: 12px; margin-left: 6px; }
 
 /* ---------- KPI tiles ---------- */
 .kpis {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 10px;
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
   padding: 14px 20px 0;
 }
 .kpi {
@@ -164,11 +164,19 @@ select.inline { padding: 2px 6px; font-size: 12px; margin-left: 6px; }
 .ocean-card { grid-column: span 5; }
 .fishing-card { grid-column: span 7; }
 .trends-card { grid-column: span 6; }
+.airport-card { grid-column: span 6; }
+.port-card { grid-column: span 6; }
+.sealevel-card { grid-column: span 5; }
+.tourism-card { grid-column: span 7; }
+.policy-card { grid-column: span 7; }
+.military-card { grid-column: span 5; }
 .embeds-card { grid-column: span 6; }
 .status-card { grid-column: span 12; }
+@media (max-width: 1180px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 1180px) {
   .map-card, .side-card, .news-card, .fb-card, .weather-card, .hazards-card, .ocean-card,
-  .fishing-card, .trends-card, .embeds-card { grid-column: span 12; }
+  .fishing-card, .trends-card, .embeds-card, .airport-card, .port-card, .sealevel-card, .tourism-card,
+  .policy-card, .military-card { grid-column: span 12; }
   .side-card { max-height: 560px; }
 }
 @media (max-width: 640px) {
@@ -227,6 +235,7 @@ select.inline { padding: 2px 6px; font-size: 12px; margin-left: 6px; }
   display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center;
   padding: 7px 6px; border-bottom: 1px solid var(--border); border-radius: 6px;
 }
+a.row { color: inherit; text-decoration: none; }
 .row:hover, .row:focus-visible { background: var(--surface-2); outline: none; }
 .row .ico { width: 18px; height: 18px; display: grid; place-items: center; }
 .row .title { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

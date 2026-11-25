@@ -1,0 +1,6 @@
+{
+  "_help": "Shared vessel watch list. Each entry: {\"value\": MMSI (9 digits), IMO or part of the ship name, \"note\": why you're watching it}. Example: {\"value\": \"XIANG YANG HONG\", \"note\": \"Chinese research vessels\"}",
+  "vessels": [
+    { "value": "REMELIIK", "note": "Palau Division of Marine Law Enforcement patrol boats" }
+  ]
+}

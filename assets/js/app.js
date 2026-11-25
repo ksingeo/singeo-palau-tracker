@@ -2,6 +2,7 @@
 import { EMBEDS, FACEBOOK_PAGES, MAP, QUAKES, STALE_MINUTES, WEATHER } from "./config.js";
 import { barChart, empty, hbarChart, lineChart, scatterChart } from "./charts.js";
 import * as M from "./map.js";
+import * as P from "./panels2.js";
 import { aircraftTip, gfwEventTip, gfwLabel, quakeTip, SHIP_CATEGORIES, shipTip, shipVar } from "./tips.js";
 import {
   ago, clear, compass, cssVar, fetchJSON, fmt, h, haversineKm, initTooltips, kmToNm, palauTime, pill,
@@ -29,6 +30,9 @@ async function boot() {
   ["newsSearch", "newsRange", "newsSource", "newsPalauOnly"].forEach((id) => $(id).addEventListener("input", renderNews));
   $("quakeMin").addEventListener("input", renderQuakes);
   $("liveFlights").addEventListener("change", toggleLiveFlights);
+  const onWatchChange = () => { applyWatch(); renderShips(); renderKpis(); renderAlerts(); };
+  ["watchEdit", "watchEdit2"].forEach((id) => $(id).addEventListener("click", () => P.openWatchDialog(onWatchChange)));
+  await P.loadWatchFile();
   await Promise.allSettled([loadServer(), loadClient()]);
   setInterval(loadServer, 5 * 60000);
   setInterval(loadClient, 15 * 60000);
@@ -83,14 +87,25 @@ function setupLegend() {
 
 /* ================================================================= loading */
 async function loadServer() {
-  const files = ["status", "ships", "flights", "news", "hazards", "ocean", "gfw", "history"];
+  const files = ["status", "ships", "flights", "news", "hazards", "ocean", "gfw", "history", "port", "airport", "sealevel", "tourism", "policy", "military"];
   const res = await Promise.allSettled(files.map((f) => fetchJSON(`data/${f}.json`, { bust: true })));
   res.forEach((r, i) => { if (r.status === "fulfilled") state[files[i]] = r.value; else console.warn(files[i], r.reason); });
   if (state.liveAircraft && $("liveFlights").checked) state.flights = { ...state.flights, aircraft: state.liveAircraft };
+  state.shipsRaw = state.ships ? JSON.parse(JSON.stringify(state.ships.ships || [])) : [];
+  applyWatch();
   renderAllServer();
 }
+/** Add the viewer's watch-list matches to each ship's watch reasons. */
+function applyWatch() {
+  if (!state.ships) return;
+  state.ships.ships = (state.shipsRaw || []).map((sh) => {
+    const extra = P.matchWatch(sh);
+    return extra.length ? { ...sh, watch: [...extra, ...(sh.watch || [])], user_watch: true } : sh;
+  });
+}
+const panelFns = [() => P.renderAirport(state), () => P.renderPort(state), () => P.renderSeaLevel(state), () => P.renderTourism(state), () => P.renderPolicy(state), () => P.renderMilitary(state)];
 function renderAllServer() {
-  for (const fn of [renderFreshness, renderShips, renderFlights, renderNews, renderHazards, renderOcean, renderGfw, renderTrends, renderStatus, renderKpis, renderAlerts]) {
+  for (const fn of [renderFreshness, renderShips, renderFlights, renderNews, renderHazards, renderOcean, renderGfw, renderTrends, ...panelFns, renderStatus, renderKpis, renderAlerts]) {
     try { fn(); } catch (e) { console.error(fn.name, e); }
   }
 }
@@ -121,6 +136,7 @@ function renderShips() {
     if (f === "fishing" && s.category !== "Fishing") return false;
     if (f === "gov" && s.category !== "Government & military") return false;
     if (f === "watch" && !(s.watch && s.watch.length)) return false;
+    if (f === "port" && !(state.port?.in_port || []).some((c) => c.mmsi === s.mmsi)) return false;
     if (q && ![s.name, s.mmsi, s.flag, s.callsign, s.destination, s.type_label].some((x) => x && String(x).toLowerCase().includes(q))) return false;
     return true;
   });
@@ -550,7 +566,8 @@ function setupEmbeds() {
 }
 
 /* ================================================================= status */
-const HINTS = { ships: "Needs the AISSTREAM_API_KEY repository secret.", gfw: "Needs the GFW_TOKEN repository secret." };
+const HINTS = { ships: "Needs the AISSTREAM_API_KEY repository secret.", gfw: "Needs the GFW_TOKEN repository secret.",
+  airport: "Needs the AERODATABOX_API_KEY repository secret (RapidAPI).", policy: "Add the DATA_GOV_API_KEY secret (free at api.data.gov) to avoid DEMO_KEY limits." };
 function renderStatus() {
   const grid = clear($("statusGrid"));
   const items = [...Object.entries(state.status?.sources || {}).map(([k, v]) => ({ key: k, ...v, where: "Server (GitHub Action)" })),
@@ -615,6 +632,18 @@ function renderKpis() {
   const wk = items.filter((i) => Date.now() - new Date(i.published) < 7 * DAY && i.relevance !== "regional");
   box.append(kpi("📰 Palau news", fmt(wk.length), `${fmt(today.length)} in last 24 h`,
     () => tt({ title: "Latest Palau headlines", extra: h("div", null, wk.slice(0, 6).map((i) => h("div", { class: "tt-p" }, `• ${i.title} `, h("span", { style: { color: "var(--text-secondary)" } }, `(${i.source}, ${ago(i.published)})`)))) }), goto("newsCard")));
+  // port
+  const pt = state.port;
+  if (pt) box.append(kpi("⚓ In port · Malakal", fmt(pt.in_port.length), `${fmt(pt.expected.length)} expected · ${fmt(pt.calls.filter((c) => Date.now() - new Date(c.arrived) < 7 * DAY).length)} calls in 7 d`,
+    () => tt({ title: "Commercial ships at Malakal Harbor", rows: pt.in_port.map((c) => [c.name || c.mmsi, `${c.type_label || c.category || ""} · ${fmt(c.hours_in_port, 0)} h`]), text: pt.in_port.length ? null : "No AIS class-A ships within 4 NM of Malakal right now.", foot: "Derived from AIS" }), goto("portCard")));
+  // king tide
+  const kt = P.nextKingTide(state);
+  if (state.sealevel?.king_tides) box.append(kpi("🌊 Next king tide", kt ? [fmt(kt.height_m, 2), h("small", null, " m")] : "None", kt ? `${palauTime(kt.time, { weekday: "short" })} · ${ago(kt.time)}` : "in the next 6 months",
+    () => tt({ title: "King tides at Malakal Harbor", text: `High tides above ${fmt(state.sealevel.king_tides.p98_m, 2)} m (top 2%). Low-lying coastal areas can flood, especially with wind or swell.`, rows: (state.sealevel.king_tides.upcoming || []).filter((u) => u.level === "king").slice(0, 5).map((u) => [palauTime(u.time, { weekday: "short" }), `${fmt(u.height_m, 2)} m`]) }), goto("sealevelCard")));
+  // tourism
+  const tm = (state.tourism?.months || []).filter((m) => !m.derived_from).slice(-1)[0];
+  if (tm) box.append(kpi("🧳 Visitors", fmt(tm.total), `${new Date(`${tm.month}-15T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })}${tm.yoy_pct != null ? ` · ${tm.yoy_pct > 0 ? "+" : ""}${tm.yoy_pct}% YoY` : ""}`,
+    () => tt({ title: `Visitor arrivals, ${tm.month}`, text: tm.summary, rows: [["Year to date", tm.ytd ? fmt(tm.ytd) : null]] }), goto("tourismCard")));
   // fishing
   const g = state.gfw;
   if (g?.configured) {
@@ -638,6 +667,11 @@ function collectAlerts() {
   const o = state.ocean?.latest;
   if (o && o.baa >= 2) out.push({ level: o.baa >= 3 ? "serious" : "warning", label: `🪸 Coral ${o.baa_label} (DHW ${fmt(o.dhw, 1)})`, tip: () => tt({ title: o.baa_label, text: "Heat stress is building on Palau's reefs." }), go: goto("coralStatus") });
   (state.gfw?.events || []).filter((e) => ["encounter", "gap"].includes(e.type) && Date.now() - new Date(e.start) < 7 * DAY).slice(0, 10).forEach((e) => out.push({ level: "warning", label: `🎣 ${gfwLabel(e.type).split(" (")[0]}: ${e.vessel?.name || e.vessel?.mmsi}`, tip: () => gfwEventTip(e), go: () => M.focus(`gfw:${e.id}`, 7) }));
+  const kt = P.nextKingTide(state);
+  if (kt && new Date(kt.time) - Date.now() < 3 * DAY) out.push({ level: "warning", label: `🌊 King tide ${fmt(kt.height_m, 2)} m · ${palauTime(kt.time, { weekday: "short" })}`, tip: () => tt({ title: "King tide", text: "Higher-than-usual high tide at Malakal Harbor. Watch low-lying roads and shorelines, especially with strong winds or swell.", rows: [["Predicted", `${fmt(kt.height_m, 2)} m above MLLW`], ["When", `${palauTime(kt.time, { weekday: "long" })} Palau`]] }), go: goto("sealevelCard") });
+  (state.airport?.flights || []).filter((f) => /cancel|delay/i.test(f.status || "") && Math.abs(new Date(f.scheduled) - Date.now()) < DAY).forEach((f) => out.push({ level: /cancel/i.test(f.status) ? "serious" : "warning", label: `✈ ${f.number} ${f.direction === "arrival" ? "from" : "to"} ${f.other_iata || "?"}: ${f.status}`, tip: () => tt({ title: `${f.number} ${f.status}`, rows: [["Scheduled", `${palauTime(f.scheduled)} Palau`], ["Revised", f.revised ? `${palauTime(f.revised)} Palau` : null], ["Airline", f.airline]] }), go: goto("airportCard") }));
+  (state.policy?.bills || []).filter((b) => Date.now() - new Date(b.latest_action_date || b.date) < 14 * DAY).forEach((b) => out.push({ level: "neutral", label: `📜 ${b.label}: ${b.title.slice(0, 60)}`, tip: () => tt({ title: `${b.label}: ${b.title}`, rows: [["Latest", b.latest_action ? `${b.latest_action_date}: ${b.latest_action}` : `${b.version} (${b.date})`]] }), go: goto("policyCard") }));
+  (state.military?.contracts_recent || []).filter((c) => Date.now() - new Date(c.start) < 14 * DAY).forEach((c) => out.push({ level: "neutral", label: `🏗 New DoD contract ${P.money(c.amount)}: ${c.recipient}`, tip: () => tt({ title: c.recipient, text: c.description, rows: [["Amount", P.money(c.amount)], ["Agency", c.sub_agency]] }), go: goto("militaryCard") }));
   const rank = { critical: 0, serious: 1, warning: 2, neutral: 3 };
   return out.sort((a, b) => rank[a.level] - rank[b.level]);
 }
@@ -651,6 +685,12 @@ function renderAlerts() {
     if (alerts.length > 8) bar.append(h("button", { class: "alert-chip", onclick: () => document.querySelector('#sideTabs [data-tab="watch"]').click() }, `+${alerts.length - 8} more`));
   }
   if (!alerts.length) list.append(h("div", { class: "empty" }, pill("good", "All clear"), " Nothing flagged right now. The watch list picks up fishing vessels in the EEZ, government vessels, research ships, AIS gaps, emergency squawks, nearby cyclones, tsunami bulletins, large quakes and coral alerts."));
+  const missing = P.missingWatched(state.ships?.ships || []);
+  if (missing.length) {
+    list.append(h("div", { class: "sub-head" }, "Watched vessels not heard in the last 24 h"));
+    missing.forEach((w) => list.append(h("div", { class: "row", tip: tt({ title: w.value, text: w.note || "On your watch list", foot: "Not in current AIS data: out of receiver range, AIS off, or elsewhere." }) }, h("span", { class: "ico" }, "★"), h("div", { class: "title" }, w.value, w.note ? h("span", { class: "muted" }, ` · ${w.note}`) : null), h("span"))));
+    list.append(h("div", { class: "sub-head" }, "Alerts"));
+  }
   alerts.forEach((a) => {
     const row = h("div", { class: "row", tabindex: 0, onclick: a.go }, h("span", { class: "ico" }, pill(a.level, "")), h("div", { class: "title", style: { whiteSpace: "normal" } }, a.label), h("span"));
     setTip(row, a.tip);

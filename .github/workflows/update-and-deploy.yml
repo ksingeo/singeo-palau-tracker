@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force_gfw:
-        description: "Refresh Global Fishing Watch now (normally every 6 h)"
+        description: "Refresh slow sources now (fishing, airport, policy, military; normally every 3-12 h)"
         type: boolean
         default: false
 
@@ -42,6 +42,8 @@ jobs:
         env:
           AISSTREAM_API_KEY: ${{ secrets.AISSTREAM_API_KEY }}
           GFW_TOKEN: ${{ secrets.GFW_TOKEN }}
+          AERODATABOX_API_KEY: ${{ secrets.AERODATABOX_API_KEY }}
+          DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
           PREV_BASE_URL: ${{ steps.pages.outputs.base_url }}
           AIS_LISTEN_SECONDS: ${{ vars.AIS_LISTEN_SECONDS || '150' }}
           FORCE: ${{ inputs.force_gfw && '1' || '' }}

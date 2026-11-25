@@ -51,6 +51,9 @@ export function initMap() {
   }, { collapsed: true, position: "topright" }).addTo(map);
   L.control.scale({ imperial: false, metric: true }).addTo(map);
 
+  const portZone = L.circle([7.330, 134.452], { radius: 4 * 1852, color: cssVar("--s3"), weight: 1, dashArray: "3 4", fillOpacity: 0.04 });
+  bindTip(portZone, () => tt({ title: "Malakal port zone (4 NM)", text: "Commercial (AIS class A) ships inside this circle are counted as in port at Malakal / Koror. See the Port of Malakal panel." }));
+  portZone.addTo(layers.places);
   LANDMARKS.forEach((p) => {
     const m = L.circleMarker(p.pos, { radius: 4, color: cssVar("--surface-1"), weight: 1.5, fillColor: cssVar("--text-secondary"), fillOpacity: 1 });
     bindTip(m, () => tt({ title: p.name, text: p.text, foot: `${p.pos[0].toFixed(3)}°N, ${p.pos[1].toFixed(3)}°E` }));

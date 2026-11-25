@@ -10,22 +10,32 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+import fetch_airport  # noqa: E402
 import fetch_flights  # noqa: E402
 import fetch_gfw  # noqa: E402
 import fetch_hazards  # noqa: E402
+import fetch_military  # noqa: E402
 import fetch_news  # noqa: E402
 import fetch_ocean  # noqa: E402
+import fetch_policy  # noqa: E402
+import fetch_sealevel  # noqa: E402
 import fetch_ships  # noqa: E402
+import fetch_tourism  # noqa: E402
 from common import age_hours, iso, load_prev, write_json  # noqa: E402
 
 HISTORY_DAYS = 14
 JOBS = [
-    ("ships", "Ships (aisstream.io AIS)", fetch_ships.run),
+    ("ships", "Ships & Malakal port calls (aisstream.io AIS)", fetch_ships.run),
     ("flights", "Flights (adsb.lol / adsb.fi)", fetch_flights.run),
     ("news", "News feeds", fetch_news.run),
     ("hazards", "Cyclones & tsunami (GDACS / NOAA)", fetch_hazards.run),
     ("ocean", "Coral heat stress (NOAA CRW)", fetch_ocean.run),
     ("gfw", "Fishing activity (Global Fishing Watch)", fetch_gfw.run),
+    ("airport", "ROR airport board (AeroDataBox)", fetch_airport.run),
+    ("sealevel", "King tides & sea level (NOAA / UHSLC)", fetch_sealevel.run),
+    ("tourism", "Visitor arrivals (Palau Visitors Authority)", fetch_tourism.run),
+    ("policy", "US Congress, Federal Register & funding", fetch_policy.run),
+    ("military", "US military contracts & news", fetch_military.run),
 ]
 
 
@@ -59,7 +69,7 @@ def main(only=None):
     row = {"t": iso()}
     if s.get("ok"):
         row.update({"ships_live": s.get("live"), "ships_eez": s.get("in_eez"),
-                    "fishing_eez": s.get("fishing_in_eez")})
+                    "fishing_eez": s.get("fishing_in_eez"), "in_port": s.get("in_port")})
     if f.get("ok"):
         row.update({"aircraft_palau": f.get("palau_count"), "aircraft_region": f.get("count")})
     if len(row) > 1 and not only:

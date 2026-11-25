@@ -15,6 +15,7 @@ import os
 import re
 import time
 
+from port import update as update_port
 from ais_reference import NAV_STATUS, flag_from_mmsi, mmsi_kind, ship_type
 from common import (KOROR, age_hours, eez_bbox, haversine_km, in_eez, in_territorial_sea, iso,
                     km_to_nm, load_prev, now_utc, write_json)
@@ -192,13 +193,19 @@ def run():
     write_json("ships.json", {"updated": iso(), "listen_seconds": seconds, "messages": msgs,
                               "configured": True, "bbox": bbox, "memory_hours": SHIP_MEMORY_HOURS,
                               "ships": ships})
+    try:
+        port = update_port(ships)
+        port_msg = f"; port: {len(port['in_port'])} in, {len(port['expected'])} expected"
+    except Exception as e:  # noqa: BLE001
+        port, port_msg = None, f"; port log error: {str(e)[:80]}"
     live = sum(1 for s in ships if s["age_h"] < 1)
     in_e = sum(1 for s in ships if s.get("in_eez") and s["age_h"] < 6)
     return {"ok": True, "count": len(ships), "live": live, "in_eez": in_e,
             "fishing_in_eez": sum(1 for s in ships if s.get("in_eez") and s["category"] == "Fishing"
                                   and s["age_h"] < 6),
             "message": f"{msgs} AIS messages in {seconds}s; {live} ships heard this run, "
-                       f"{len(ships)} in last {SHIP_MEMORY_HOURS:.0f} h ({in_e} in EEZ)"}
+                       f"{len(ships)} in last {SHIP_MEMORY_HOURS:.0f} h ({in_e} in EEZ){port_msg}",
+            "in_port": len(port["in_port"]) if port else None}
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@
       <span class="brand-flag" aria-hidden="true"></span>
       <div>
         <h1>Palau Tracker</h1>
-        <div class="sub">Ships · Flights · News · Weather · Ocean · Fishing</div>
+        <div class="sub">Ships · Flights · Port · News · Weather · Tides · Ocean · Fishing · Policy · Defense</div>
       </div>
     </div>
     <div class="top-meta">
@@ -63,7 +63,9 @@
             <option value="fishing">Fishing</option>
             <option value="gov">Government / military</option>
             <option value="watch">Flagged</option>
+            <option value="port">In port (Malakal)</option>
           </select>
+          <button class="btn sm" id="watchEdit2" data-tip="Edit your vessel watch list">★</button>
         </div>
         <div class="list" id="shipList"></div>
         <p class="note" id="shipNote"></p>
@@ -80,6 +82,7 @@
         <p class="note" id="flightNote"></p>
       </div>
       <div class="tab-panel" data-panel="watch">
+        <div class="filters"><button class="btn sm" id="watchEdit" data-tip="Flag vessels by MMSI, IMO or name. They get a gold ring on the map and show up here and in the alerts bar.">✎ Edit vessel watch list</button></div>
         <div class="list" id="watchList"></div>
       </div>
     </section>
@@ -162,6 +165,49 @@
       <div id="gfwBody"></div>
     </section>
 
+    <!-- AIRPORT -->
+    <section class="card airport-card" id="airportCard">
+      <div class="card-head"><h2>ROR airport board</h2><span class="muted">Roman Tmetuchl International</span></div>
+      <div class="tabs" id="airportTabs" role="tablist"></div>
+      <div class="list" id="airportList" style="max-height: 380px"></div>
+      <p class="note" id="airportNote"></p>
+    </section>
+
+    <!-- PORT -->
+    <section class="card port-card" id="portCard">
+      <div class="card-head"><h2>Port of Malakal</h2><span class="muted">Koror · from AIS</span></div>
+      <div class="tabs" id="portTabs" role="tablist"></div>
+      <div class="list" id="portList" style="max-height: 380px"></div>
+      <p class="note" id="portNote"></p>
+    </section>
+
+    <!-- KING TIDES -->
+    <section class="card sealevel-card" id="sealevelCard">
+      <div class="card-head"><h2>King tides &amp; sea level</h2><span class="muted" id="sealevelMeta"></span></div>
+      <div class="list compact" id="kingTideList" style="max-height: 330px"></div>
+      <div class="chart" id="chartResidual"></div>
+    </section>
+
+    <!-- TOURISM -->
+    <section class="card tourism-card" id="tourismCard">
+      <div class="card-head"><h2>Visitor arrivals</h2><span class="muted" id="tourismMeta"></span></div>
+      <div id="tourismBody"></div>
+    </section>
+
+    <!-- US POLICY -->
+    <section class="card policy-card" id="policyCard">
+      <div class="card-head"><h2>US policy &amp; Compact funding</h2><span class="muted" id="policyMeta"></span></div>
+      <div class="tabs" id="policyTabs" role="tablist"></div>
+      <div id="policyBody"></div>
+    </section>
+
+    <!-- MILITARY -->
+    <section class="card military-card" id="militaryCard">
+      <div class="card-head"><h2>US military activity</h2><span class="muted" id="militaryMeta"></span></div>
+      <div class="tabs scroll" id="militaryTabs" role="tablist"></div>
+      <div id="militaryBody"></div>
+    </section>
+
     <!-- TRENDS -->
     <section class="card trends-card">
       <div class="card-head"><h2>Traffic trends <span class="muted">(14 days)</span></h2></div>
@@ -193,12 +239,13 @@
   </main>
 
   <footer class="foot">
-    <span>Data: aisstream.io · adsb.lol · adsb.fi · OpenSky · Google News · Island Times · PalauGov · RNZ · Open-Meteo · NOAA (CRW, CO-OPS, PTWC) · USGS · GDACS · Global Fishing Watch · Marine Regions (CC-BY) · NASA GIBS · © OpenStreetMap / CARTO / Esri.</span>
+    <span>Data: aisstream.io · adsb.lol · adsb.fi · OpenSky · AeroDataBox · Palau Visitors Authority · GovInfo · Congress.gov · Federal Register · USAspending.gov · UH Sea Level Center · Google News · Island Times · PalauGov · RNZ · Open-Meteo · NOAA (CRW, CO-OPS, PTWC) · USGS · GDACS · Global Fishing Watch · Marine Regions (CC-BY) · NASA GIBS · © OpenStreetMap / CARTO / Esri.</span>
     <span>Positions come from public, crowd-sourced feeds and can be incomplete or delayed. Not for navigation or safety-of-life use.</span>
   </footer>
 
   <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
   <dialog id="fbDialog" class="dialog"></dialog>
+  <dialog id="watchDialog" class="dialog"></dialog>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script type="module" src="assets/js/app.js"></script>
