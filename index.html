@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Palau Tracker</title>
+  <meta name="description" content="Live dashboard for the Republic of Palau: ships in the EEZ, flights, news, Facebook, weather, typhoons, earthquakes, coral heat stress and fishing activity.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230099ff'/%3E%3Ccircle cx='13' cy='16' r='7' fill='%23ffde00'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    try { const t = localStorage.getItem("pt-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" data-tip="Republic of Palau (Beluu er a Belau). Capital: Ngerulmud, Melekeok. Largest town: Koror. EEZ ≈ 616,000 km², 80% of it the Palau National Marine Sanctuary.">
+      <span class="brand-flag" aria-hidden="true"></span>
+      <div>
+        <h1>Palau Tracker</h1>
+        <div class="sub">Ships · Flights · News · Weather · Ocean · Fishing</div>
+      </div>
+    </div>
+    <div class="top-meta">
+      <div class="clock" id="clock" data-tip-fn="clock"><span class="clock-time">--:--</span><span class="clock-zone">Palau (UTC+9)</span></div>
+      <div class="freshness" id="freshness" data-tip-fn="freshness">Loading…</div>
+      <button class="btn" id="refreshBtn" data-tip="Reload every data source now">↻ Refresh</button>
+      <button class="btn" id="themeBtn" data-tip="Switch light / dark theme">◐ Theme</button>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Headline numbers"></section>
+
+  <section class="alerts-bar" id="alertsBar" aria-label="Watch list" hidden></section>
+
+  <main class="grid">
+    <!-- MAP -->
+    <section class="card map-card" id="mapCard">
+      <div class="card-head">
+        <h2>Palau EEZ live map</h2>
+        <div class="map-tools">
+          <label class="chk" data-tip="Ask OpenSky Network for live aircraft positions every 3 minutes, straight from your browser. It has its own coverage and rate limits."><input type="checkbox" id="liveFlights"> Live flights (OpenSky)</label>
+          <button class="btn sm" id="fitEez" data-tip="Zoom to the whole Palau Exclusive Economic Zone">Fit EEZ</button>
+        </div>
+      </div>
+      <div id="map" role="region" aria-label="Map of Palau's EEZ with ships, aircraft and hazards"></div>
+      <div class="legend" id="mapLegend"></div>
+    </section>
+
+    <!-- SIDE: lists -->
+    <section class="card side-card">
+      <div class="tabs" role="tablist" id="sideTabs">
+        <button role="tab" class="tab active" data-tab="ships">Ships <span class="badge" id="shipsBadge">0</span></button>
+        <button role="tab" class="tab" data-tab="flights">Flights <span class="badge" id="flightsBadge">0</span></button>
+        <button role="tab" class="tab" data-tab="watch">Watch <span class="badge warn" id="watchBadge">0</span></button>
+      </div>
+      <div class="tab-panel active" data-panel="ships">
+        <div class="filters">
+          <input type="search" id="shipSearch" placeholder="Search name, MMSI, flag…" aria-label="Search ships">
+          <select id="shipFilter" aria-label="Filter ships">
+            <option value="eez">Inside EEZ</option>
+            <option value="all">All in area</option>
+            <option value="fishing">Fishing</option>
+            <option value="gov">Government / military</option>
+            <option value="watch">Flagged</option>
+          </select>
+        </div>
+        <div class="list" id="shipList"></div>
+        <p class="note" id="shipNote"></p>
+      </div>
+      <div class="tab-panel" data-panel="flights">
+        <div class="filters">
+          <select id="flightFilter" aria-label="Filter flights">
+            <option value="palau">Within 250 NM of Palau</option>
+            <option value="all">Whole region</option>
+            <option value="log">Seen in last 24 h</option>
+          </select>
+        </div>
+        <div class="list" id="flightList"></div>
+        <p class="note" id="flightNote"></p>
+      </div>
+      <div class="tab-panel" data-panel="watch">
+        <div class="list" id="watchList"></div>
+      </div>
+    </section>
+
+    <!-- NEWS -->
+    <section class="card news-card" id="newsCard">
+      <div class="card-head">
+        <h2>Palau news</h2>
+        <span class="muted" id="newsMeta"></span>
+      </div>
+      <div class="filters wrap">
+        <input type="search" id="newsSearch" placeholder="Search headlines…" aria-label="Search news">
+        <select id="newsRange" aria-label="Date range">
+          <option value="1">Last 24 h</option>
+          <option value="7" selected>Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="45">All</option>
+        </select>
+        <select id="newsSource" aria-label="Source"><option value="">All sources</option></select>
+        <label class="chk" data-tip="Hide regional and wire stories reprinted by Palau outlets that don't mention Palau"><input type="checkbox" id="newsPalauOnly" checked> Palau stories only</label>
+      </div>
+      <div class="chips" id="newsTopics"></div>
+      <div class="news-list" id="newsList"></div>
+    </section>
+
+    <!-- FACEBOOK -->
+    <section class="card fb-card">
+      <div class="card-head">
+        <h2>Palau on Facebook</h2>
+        <button class="btn sm" id="fbManage" data-tip="Add or remove Facebook pages. Saved in this browser only.">Edit pages</button>
+      </div>
+      <div class="tabs scroll" id="fbTabs" role="tablist"></div>
+      <div class="fb-frame" id="fbFrame"></div>
+      <p class="note">Facebook's own page plugin shows each page's public posts. If nothing appears, your browser may be blocking Facebook content (tracking protection or an ad blocker). Use the "Open on Facebook" link instead.</p>
+    </section>
+
+    <!-- WEATHER -->
+    <section class="card weather-card">
+      <div class="card-head"><h2>Weather &amp; sea · Koror</h2><span class="muted" id="wxMeta"></span></div>
+      <div class="wx-now" id="wxNow"></div>
+      <div class="wx-days" id="wxDays"></div>
+      <div class="chart-row">
+        <div class="chart" id="chartTemp"></div>
+        <div class="chart" id="chartRain"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart" id="chartWaves"></div>
+        <div class="chart" id="chartTide"></div>
+      </div>
+    </section>
+
+    <!-- HAZARDS -->
+    <section class="card hazards-card">
+      <div class="card-head"><h2>Typhoons, earthquakes &amp; tsunami</h2></div>
+      <div class="sub-head">Tropical cyclones <span class="muted">(GDACS)</span></div>
+      <div class="list compact" id="cycloneList"></div>
+      <div class="sub-head">Tsunami bulletins <span class="muted">(NOAA PTWC / NTWC)</span></div>
+      <div class="list compact" id="tsunamiList"></div>
+      <div class="sub-head">Earthquakes within 1,500 km <span class="muted">(USGS, 30 days)</span>
+        <select id="quakeMin" aria-label="Minimum magnitude" class="inline">
+          <option value="4">M4+</option><option value="5">M5+</option><option value="6">M6+</option>
+        </select>
+      </div>
+      <div class="chart" id="chartQuakes"></div>
+      <div class="list compact" id="quakeList"></div>
+    </section>
+
+    <!-- OCEAN -->
+    <section class="card ocean-card">
+      <div class="card-head"><h2>Ocean &amp; coral health</h2><span class="muted" id="oceanMeta"></span></div>
+      <div class="coral-status" id="coralStatus"></div>
+      <div class="chart" id="chartSst"></div>
+      <div class="chart" id="chartDhw"></div>
+      <p class="note">Map layers: switch on "Satellite true colour" or "Sea surface temp" in the map's layer menu (NASA GIBS, yesterday's imagery).</p>
+    </section>
+
+    <!-- FISHING -->
+    <section class="card fishing-card">
+      <div class="card-head"><h2>Fishing activity &amp; vessel behaviour</h2><span class="muted" id="gfwMeta"></span></div>
+      <div id="gfwBody"></div>
+    </section>
+
+    <!-- TRENDS -->
+    <section class="card trends-card">
+      <div class="card-head"><h2>Traffic trends <span class="muted">(14 days)</span></h2></div>
+      <div class="chart-row">
+        <div class="chart" id="chartShipsTrend"></div>
+        <div class="chart" id="chartAirTrend"></div>
+      </div>
+    </section>
+
+    <!-- BACKUP LIVE MAPS -->
+    <section class="card embeds-card">
+      <div class="card-head">
+        <h2>Backup live maps</h2>
+        <div class="tabs" id="embedTabs" role="tablist">
+          <button class="tab active" data-embed="vesselfinder">VesselFinder</button>
+          <button class="tab" data-embed="marinetraffic">MarineTraffic</button>
+          <button class="tab" data-embed="adsb">ADS-B (flights)</button>
+        </div>
+      </div>
+      <div class="embed-frame" id="embedFrame"></div>
+      <p class="note" id="embedNote"></p>
+    </section>
+
+    <!-- STATUS -->
+    <section class="card status-card">
+      <div class="card-head"><h2>Data sources</h2></div>
+      <div class="status-grid" id="statusGrid"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Data: aisstream.io · adsb.lol · adsb.fi · OpenSky · Google News · Island Times · PalauGov · RNZ · Open-Meteo · NOAA (CRW, CO-OPS, PTWC) · USGS · GDACS · Global Fishing Watch · Marine Regions (CC-BY) · NASA GIBS · © OpenStreetMap / CARTO / Esri.</span>
+    <span>Positions come from public, crowd-sourced feeds and can be incomplete or delayed. Not for navigation or safety-of-life use.</span>
+  </footer>
+
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <dialog id="fbDialog" class="dialog"></dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
